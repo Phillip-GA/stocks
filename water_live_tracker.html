@@ -1,0 +1,379 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>Water Technology Report — Live Portfolio Tracker</title>
+<!--
+  GITHUB PAGES DEPLOY
+  ===================
+  1. Create a repo at github.com (e.g. "stock-tracker")
+  2. Save this file as: water_portfolio.html
+  3. Push to main branch
+  4. Go to repo Settings > Pages > Source: main branch > Save
+  5. Live at: https://YOUR_USERNAME.github.io/stock-tracker/water_portfolio.html
+  6. Click "Refresh Prices" on the page to pull live Yahoo Finance data
+
+  CORS NOTE: Yahoo Finance API is called via a public CORS proxy (allorigins.win).
+  If that proxy is down, try replacing with: https://corsproxy.io/?
+-->
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:#020817;color:#f1f5f9;font-family:'Inter',system-ui,sans-serif;font-size:14px}
+.hero{background:linear-gradient(135deg,#071a1a,#052e1c,#071a1a);border-bottom:1px solid #1e293b;padding:24px 20px 18px}
+.hero h1{font-size:22px;font-weight:800;background:linear-gradient(90deg,#f1f5f9,#6ee7b7);-webkit-background-clip:text;-webkit-text-fill-color:transparent;margin:4px 0}
+.badge{background:#052e1c;color:#34d399;border:1px solid #065f46;border-radius:20px;padding:2px 10px;font-size:11px;font-weight:600}
+.label{color:#475569;font-size:10px;text-transform:uppercase;letter-spacing:1px;font-weight:600}
+.container{max-width:1200px;margin:0 auto;padding:20px 14px}
+.panel{background:#0f172a;border:1px solid #1e293b;border-radius:12px;padding:16px;margin-bottom:18px}
+.panel h2{color:#64748b;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;margin-bottom:12px}
+.refresh-bar{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:18px}
+.btn-refresh{background:linear-gradient(135deg,#065f46,#064e3b);color:#fff;border:none;border-radius:8px;padding:10px 22px;font-size:13px;font-weight:700;cursor:pointer;transition:.2s}
+.btn-refresh:hover{background:linear-gradient(135deg,#059669,#065f46)}
+.btn-refresh:disabled{background:#1e293b;color:#334155;cursor:not-allowed}
+.status{color:#475569;font-size:12px}
+.status.ok{color:#4ade80}
+.status.err{color:#f87171}
+.status.loading{color:#fbbf24}
+.as-of{color:#334155;font-size:11px;margin-left:auto}
+.sum-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:10px;margin-bottom:18px}
+.sum-card{background:#0f172a;border:1px solid #1e293b;border-radius:10px;padding:14px}
+.sum-card .lbl{color:#475569;font-size:10px;text-transform:uppercase;letter-spacing:1px;font-weight:600;margin-bottom:4px}
+.sum-card .val{font-size:20px;font-weight:800;color:#f1f5f9}
+.sum-card .sub{font-size:11px;color:#475569;margin-top:2px}
+.tbl-wrap{overflow-x:auto}
+table{width:100%;border-collapse:collapse;font-size:12px}
+th{padding:7px 8px;color:#475569;font-weight:700;text-align:left;white-space:nowrap;border-bottom:2px solid #1e293b;cursor:pointer;user-select:none}
+th:hover{color:#94a3b8}
+td{padding:7px 8px;border-bottom:1px solid #080d1a;white-space:nowrap}
+tr:nth-child(even) td{background:rgba(255,255,255,0.01)}
+tr:hover td{background:rgba(255,255,255,0.03)}
+.tier-badge{border-radius:20px;padding:1px 7px;font-size:10px;font-weight:600}
+.dd-warn{background:#78350f;color:#fcd34d;border-radius:4px;padding:1px 5px}
+.dd-alert{background:#7f1d1d;color:#fca5a5;border-radius:4px;padding:1px 5px}
+.skeleton{background:linear-gradient(90deg,#1e293b 25%,#293548 50%,#1e293b 75%);background-size:200% 100%;animation:shimmer 1.5s infinite;border-radius:3px;height:12px;width:60px;display:inline-block}
+@keyframes shimmer{0%{background-position:200% 0}100%{background-position:-200% 0}}
+.footer{text-align:center;margin-top:24px;padding:12px 0;border-top:1px solid #1e293b;color:#1e293b;font-size:11px}
+</style>
+</head>
+<body>
+
+<div class="hero">
+  <div style="max-width:1200px;margin:0 auto">
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:4px">
+      <span class="label">Live Portfolio Tracker</span>
+      <span class="badge">Water Technology Report — June 2026</span>
+    </div>
+    <h1>The Blue Economy: Investing in Water Scarcity Solutions</h1>
+    <p style="color:#475569;font-size:12px;margin-top:4px">15 positions · $500 per ticker · Entry 06/18/2026 · Prices via Yahoo Finance</p>
+  </div>
+</div>
+
+<div class="container">
+
+  <div class="refresh-bar">
+    <button class="btn-refresh" id="refreshBtn" onclick="refreshAll()">⟳ Refresh Prices</button>
+    <span class="status" id="statusMsg">Click Refresh to load live prices.</span>
+    <span class="as-of" id="asOf"></span>
+  </div>
+
+  <div class="sum-grid">
+    <div class="sum-card">
+      <div class="lbl">Total Invested</div>
+      <div class="val" id="s-invested">$7,500</div>
+      <div class="sub">15 × $500</div>
+    </div>
+    <div class="sum-card">
+      <div class="lbl">Current Value</div>
+      <div class="val" id="s-value">—</div>
+      <div class="sub">Live prices</div>
+    </div>
+    <div class="sum-card">
+      <div class="lbl">Total P&amp;L</div>
+      <div class="val" id="s-pnl">—</div>
+      <div class="sub" id="s-pnlpct">—</div>
+    </div>
+    <div class="sum-card">
+      <div class="lbl">Best Performer</div>
+      <div class="val" id="s-best" style="font-size:15px">—</div>
+      <div class="sub" id="s-bestpct">—</div>
+    </div>
+    <div class="sum-card">
+      <div class="lbl">Worst Performer</div>
+      <div class="val" id="s-worst" style="font-size:15px">—</div>
+      <div class="sub" id="s-worstpct">—</div>
+    </div>
+    <div class="sum-card">
+      <div class="lbl">Drawdown Alerts</div>
+      <div class="val" id="s-alerts">—</div>
+      <div class="sub">≥10% off 52W high</div>
+    </div>
+  </div>
+
+  <div class="panel">
+    <h2>Position Detail — Click Column Headers to Sort</h2>
+    <div class="tbl-wrap">
+      <table id="mainTable">
+        <thead>
+          <tr>
+            <th onclick="sortTable(0)">TICKER</th>
+            <th onclick="sortTable(1)">COMPANY</th>
+            <th onclick="sortTable(2)">SUBSECTOR</th>
+            <th onclick="sortTable(3)">TIER</th>
+            <th onclick="sortTable(4)">SCORE</th>
+            <th onclick="sortTable(5)">ENTRY $</th>
+            <th onclick="sortTable(6)">LIVE $</th>
+            <th onclick="sortTable(7)">DAY CHG</th>
+            <th onclick="sortTable(8)">SHARES</th>
+            <th onclick="sortTable(9)">COST BASIS</th>
+            <th onclick="sortTable(10)">CURR VALUE</th>
+            <th onclick="sortTable(11)">P&amp;L $</th>
+            <th onclick="sortTable(12)">P&amp;L %</th>
+            <th onclick="sortTable(13)">52W HIGH</th>
+            <th onclick="sortTable(14)">52W LOW</th>
+            <th onclick="sortTable(15)">% OFF HIGH</th>
+            <th onclick="sortTable(16)">ANALYST PT</th>
+            <th onclick="sortTable(17)">UPSIDE TO PT</th>
+            <th onclick="sortTable(18)">CONSENSUS</th>
+          </tr>
+        </thead>
+        <tbody id="tableBody"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="footer">
+    Water Technology Report · June 2026 · Not investment advice · Prices via Yahoo Finance (15-20 min delay) · Hosted on GitHub Pages
+  </div>
+</div>
+
+<script>
+const COST_PER = 500;
+const TIER_COLOR = {Conservative:"#3b82f6",Moderate:"#10b981",Aggressive:"#f59e0b"};
+const TIER_BG    = {Conservative:"rgba(59,130,246,0.15)",Moderate:"rgba(16,185,129,0.15)",Aggressive:"rgba(245,158,11,0.15)"};
+
+const STOCKS = [
+  {ticker:"VLTO",company:"Veralto",sector:"Water Analytics",tier:"Conservative",score:84,entry:88,pt:110,consensus:"Buy"},
+  {ticker:"XYL",company:"Xylem",sector:"Water Infrastructure",tier:"Conservative",score:82,entry:148,pt:165,consensus:"Buy"},
+  {ticker:"PNR",company:"Pentair",sector:"Water Solutions",tier:"Conservative",score:79,entry:95,pt:117,consensus:"Buy"},
+  {ticker:"TTEK",company:"Tetra Tech",sector:"Water Engineering",tier:"Conservative",score:78,entry:29,pt:42,consensus:"Buy"},
+  {ticker:"AOS",company:"A.O. Smith",sector:"Water Products",tier:"Conservative",score:77,entry:60,pt:74,consensus:"Buy"},
+  {ticker:"MWA",company:"Mueller Water",sector:"Water Infrastructure",tier:"Moderate",score:82,entry:32,pt:40,consensus:"Buy"},
+  {ticker:"WTS",company:"Watts Water Tech",sector:"Water Flow Control",tier:"Moderate",score:80,entry:190,pt:225,consensus:"Buy"},
+  {ticker:"BMI",company:"Badger Meter",sector:"Smart Metering",tier:"Moderate",score:75,entry:126,pt:147,consensus:"Buy"},
+  {ticker:"FELE",company:"Franklin Electric",sector:"Water Pumping",tier:"Moderate",score:77,entry:87,pt:105,consensus:"Buy"},
+  {ticker:"ITRI",company:"Itron",sector:"Smart Water/Energy",tier:"Moderate",score:79,entry:92,pt:115,consensus:"Buy"},
+  {ticker:"CWCO",company:"Consolidated Water",sector:"Desalination",tier:"Aggressive",score:74,entry:30,pt:42,consensus:"Strong Buy"},
+  {ticker:"ERII",company:"Energy Recovery",sector:"Desalination Tech",tier:"Aggressive",score:68,entry:14.5,pt:16,consensus:"Hold"},
+  {ticker:"ZWS",company:"Zurn Elkay Water",sector:"Water Products",tier:"Aggressive",score:74,entry:34,pt:42,consensus:"Buy"},
+  {ticker:"PRMB",company:"Primo Brands",sector:"Water Delivery",tier:"Aggressive",score:72,entry:32,pt:40,consensus:"Buy"},
+  {ticker:"CNM",company:"Core & Main",sector:"Water Distribution",tier:"Aggressive",score:73,entry:48,pt:60,consensus:"Buy"},
+];
+
+let liveData = {};
+let sortCol = -1, sortAsc = true;
+
+function fmt$(v){ return v == null ? "—" : "$" + parseFloat(v).toLocaleString("en-US",{minimumFractionDigits:2,maximumFractionDigits:2}); }
+function fmtPct(v){ return v == null ? "—" : (v >= 0 ? "+" : "") + (v*100).toFixed(2) + "%"; }
+function scoreColor(s){ return s>=82?"#4ade80":s>=76?"#fbbf24":"#f87171"; }
+
+async function fetchQuote(ticker) {
+  const proxy = "https://api.allorigins.win/raw?url=";
+  const url = encodeURIComponent(`https://query1.finance.yahoo.com/v8/finance/chart/${ticker}?interval=1d&range=1d`);
+  const r = await fetch(proxy + url);
+  if (!r.ok) throw new Error("HTTP " + r.status);
+  const j = await r.json();
+  const meta = j.chart.result[0].meta;
+  return {
+    price:     meta.regularMarketPrice,
+    prevClose: meta.chartPreviousClose || meta.previousClose,
+    high52:    meta.fiftyTwoWeekHigh,
+    low52:     meta.fiftyTwoWeekLow,
+  };
+}
+
+async function refreshAll() {
+  const btn = document.getElementById("refreshBtn");
+  const msg = document.getElementById("statusMsg");
+  btn.disabled = true;
+  btn.textContent = "⟳ Refreshing...";
+  msg.className = "status loading";
+  msg.textContent = "Fetching prices...";
+
+  renderTable(true);
+
+  let ok = 0, fail = 0;
+  for (let i = 0; i < STOCKS.length; i++) {
+    const t = STOCKS[i].ticker;
+    msg.textContent = `Fetching ${i+1}/${STOCKS.length}: ${t}...`;
+    try {
+      liveData[t] = await fetchQuote(t);
+      ok++;
+    } catch(e) {
+      liveData[t] = null;
+      fail++;
+    }
+    await new Promise(r => setTimeout(r, 120));
+  }
+
+  renderTable(false);
+  updateSummary();
+
+  const now = new Date();
+  document.getElementById("asOf").textContent = "Last updated: " + now.toLocaleString();
+  btn.disabled = false;
+  btn.textContent = "⟳ Refresh Prices";
+  if (fail === 0) {
+    msg.className = "status ok";
+    msg.textContent = `✓ All ${ok} prices loaded.`;
+  } else {
+    msg.className = "status err";
+    msg.textContent = `✓ ${ok} loaded · ${fail} failed — try again in 30s`;
+  }
+}
+
+function renderTable(skeleton) {
+  const tbody = document.getElementById("tableBody");
+  let rows = [...STOCKS];
+  if (sortCol >= 0) {
+    rows.sort((a,b) => {
+      const av = getSortVal(a, sortCol), bv = getSortVal(b, sortCol);
+      if (av == null) return 1; if (bv == null) return -1;
+      return sortAsc ? (av > bv ? 1 : -1) : (av < bv ? 1 : -1);
+    });
+  }
+
+  tbody.innerHTML = rows.map(s => {
+    const d = liveData[s.ticker];
+    const tc = TIER_COLOR[s.tier], tbg = TIER_BG[s.tier];
+    const shares = COST_PER / s.entry;
+
+    if (skeleton || !d) {
+      const sk = skeleton ? '<span class="skeleton"></span>' : "—";
+      return `<tr>
+        <td style="color:#34d399;font-weight:700">${s.ticker}</td>
+        <td style="color:#e2e8f0">${s.company}</td>
+        <td style="color:#64748b">${s.sector}</td>
+        <td><span class="tier-badge" style="background:${tbg};color:${tc};border:1px solid ${tc}">${s.tier}</span></td>
+        <td style="color:${scoreColor(s.score)};font-weight:700;text-align:center">${s.score}</td>
+        <td style="color:#94a3b8">${fmt$(s.entry)}</td>
+        <td>${sk}</td><td>${sk}</td>
+        <td style="color:#64748b">${shares.toFixed(3)}</td>
+        <td style="color:#94a3b8">${fmt$(COST_PER)}</td>
+        <td>${sk}</td><td>${sk}</td><td>${sk}</td>
+        <td>${sk}</td><td>${sk}</td><td>${sk}</td>
+        <td style="color:#a78bfa">${fmt$(s.pt)}</td>
+        <td style="color:#64748b">—</td>
+        <td style="color:#fbbf24">${s.consensus}</td>
+      </tr>`;
+    }
+
+    const currVal = shares * d.price;
+    const pnlD   = currVal - COST_PER;
+    const pnlP   = pnlD / COST_PER;
+    const dayChg = d.prevClose ? (d.price - d.prevClose) / d.prevClose : null;
+    const offHigh= d.high52 ? (d.price - d.high52) / d.high52 : null;
+    const uptoPT = (s.pt - d.price) / d.price;
+
+    const pnlColor = pnlD >= 0 ? "#4ade80" : "#f87171";
+    const dayColor = dayChg == null ? "#94a3b8" : dayChg >= 0 ? "#4ade80" : "#f87171";
+
+    let ddClass = "";
+    if (offHigh != null && offHigh <= -0.15) ddClass = "dd-alert";
+    else if (offHigh != null && offHigh <= -0.10) ddClass = "dd-warn";
+
+    return `<tr>
+      <td style="color:#34d399;font-weight:700">${s.ticker}</td>
+      <td style="color:#e2e8f0">${s.company}</td>
+      <td style="color:#64748b">${s.sector}</td>
+      <td><span class="tier-badge" style="background:${tbg};color:${tc};border:1px solid ${tc}">${s.tier}</span></td>
+      <td style="color:${scoreColor(s.score)};font-weight:700;text-align:center">${s.score}</td>
+      <td style="color:#94a3b8">${fmt$(s.entry)}</td>
+      <td style="color:#f1f5f9;font-weight:700">${fmt$(d.price)}</td>
+      <td style="color:${dayColor}">${dayChg != null ? fmtPct(dayChg) : "—"}</td>
+      <td style="color:#64748b">${shares.toFixed(3)}</td>
+      <td style="color:#94a3b8">${fmt$(COST_PER)}</td>
+      <td style="color:#f1f5f9">${fmt$(currVal)}</td>
+      <td style="color:${pnlColor};font-weight:700">${fmt$(pnlD)}</td>
+      <td style="color:${pnlColor};font-weight:700">${fmtPct(pnlP)}</td>
+      <td style="color:#4ade80">${fmt$(d.high52)}</td>
+      <td style="color:#f87171">${fmt$(d.low52)}</td>
+      <td ${ddClass ? `class="${ddClass}"` : `style="color:#64748b"`}>${offHigh != null ? fmtPct(offHigh) : "—"}</td>
+      <td style="color:#a78bfa">${fmt$(s.pt)}</td>
+      <td style="color:${uptoPT>=0?"#4ade80":"#f87171"}">${fmtPct(uptoPT)}</td>
+      <td style="color:#fbbf24">${s.consensus}</td>
+    </tr>`;
+  }).join("");
+}
+
+function getSortVal(s, col) {
+  const d = liveData[s.ticker];
+  const shares = COST_PER / s.entry;
+  switch(col) {
+    case 0: return s.ticker;
+    case 1: return s.company;
+    case 2: return s.sector;
+    case 3: return s.tier;
+    case 4: return s.score;
+    case 5: return s.entry;
+    case 6: return d ? d.price : null;
+    case 7: return d && d.prevClose ? (d.price - d.prevClose)/d.prevClose : null;
+    case 8: return shares;
+    case 9: return COST_PER;
+    case 10: return d ? shares * d.price : null;
+    case 11: return d ? shares * d.price - COST_PER : null;
+    case 12: return d ? (shares * d.price - COST_PER) / COST_PER : null;
+    case 13: return d ? d.high52 : null;
+    case 14: return d ? d.low52 : null;
+    case 15: return d && d.high52 ? (d.price - d.high52)/d.high52 : null;
+    case 16: return s.pt;
+    case 17: return d ? (s.pt - d.price)/d.price : null;
+    case 18: return s.consensus;
+    default: return null;
+  }
+}
+
+function sortTable(col) {
+  if (sortCol === col) sortAsc = !sortAsc;
+  else { sortCol = col; sortAsc = true; }
+  renderTable(false);
+}
+
+function updateSummary() {
+  let totalVal = 0, loaded = 0;
+  let best = null, bestPct = -Infinity, worst = null, worstPct = Infinity, alerts = 0;
+
+  STOCKS.forEach(s => {
+    const d = liveData[s.ticker];
+    if (!d) return;
+    const val = (COST_PER / s.entry) * d.price;
+    const pnlP = (val - COST_PER) / COST_PER;
+    totalVal += val; loaded++;
+    if (pnlP > bestPct)  { bestPct = pnlP; best = s.ticker; }
+    if (pnlP < worstPct) { worstPct = pnlP; worst = s.ticker; }
+    if (d.high52 && (d.price - d.high52)/d.high52 <= -0.10) alerts++;
+  });
+
+  const invested = STOCKS.length * COST_PER;
+  const pnl = totalVal - invested;
+  const pnlP = pnl / invested;
+
+  document.getElementById("s-value").textContent = loaded ? fmt$(totalVal) : "—";
+  document.getElementById("s-pnl").textContent = loaded ? fmt$(pnl) : "—";
+  document.getElementById("s-pnl").style.color = pnl >= 0 ? "#4ade80" : "#f87171";
+  document.getElementById("s-pnlpct").textContent = loaded ? fmtPct(pnlP) : "—";
+  document.getElementById("s-pnlpct").style.color = pnl >= 0 ? "#4ade80" : "#f87171";
+  document.getElementById("s-best").textContent = best || "—";
+  document.getElementById("s-bestpct").textContent = best ? fmtPct(bestPct) : "—";
+  document.getElementById("s-bestpct").style.color = "#4ade80";
+  document.getElementById("s-worst").textContent = worst || "—";
+  document.getElementById("s-worstpct").textContent = worst ? fmtPct(worstPct) : "—";
+  document.getElementById("s-worstpct").style.color = "#f87171";
+  document.getElementById("s-alerts").textContent = loaded ? alerts : "—";
+  document.getElementById("s-alerts").style.color = alerts > 0 ? "#fcd34d" : "#4ade80";
+}
+
+renderTable(false);
+</script>
+</body>
+</html>
